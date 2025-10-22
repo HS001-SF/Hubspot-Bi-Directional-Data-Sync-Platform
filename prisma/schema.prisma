@@ -1,0 +1,294 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Authentication & User Management
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  syncConfigs   SyncConfig[]
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  hubspotAccountId  String?  @unique
+  accessToken       String?  @db.Text
+  refreshToken      String?  @db.Text
+  tokenExpiry       DateTime?
+  scopes            String[]
+  portalId          String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Sync Configuration
+model SyncConfig {
+  id                String           @id @default(cuid())
+  name              String
+  description       String?
+  entityType        EntityType
+  syncDirection     SyncDirection
+  isActive          Boolean          @default(true)
+  syncInterval      Int?             // in minutes, null for real-time only
+  lastSyncAt        DateTime?
+  userId            String
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  user              User             @relation(fields: [userId], references: [id])
+  fieldMappings     FieldMapping[]
+  syncJobs          SyncJob[]
+  webhookConfig     WebhookConfig?
+
+  @@index([userId])
+  @@index([entityType])
+}
+
+enum EntityType {
+  CONTACT
+  COMPANY
+  DEAL
+  TICKET
+  PRODUCT
+  CUSTOM_OBJECT
+}
+
+enum SyncDirection {
+  HUBSPOT_TO_DB
+  DB_TO_HUBSPOT
+  BIDIRECTIONAL
+}
+
+// Field Mapping
+model FieldMapping {
+  id              String      @id @default(cuid())
+  syncConfigId    String
+  hubspotField    String
+  databaseField   String
+  transformType   TransformType?
+  transformConfig Json?       // Custom transformation configuration
+  isRequired      Boolean     @default(false)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  syncConfig      SyncConfig  @relation(fields: [syncConfigId], references: [id], onDelete: Cascade)
+
+  @@unique([syncConfigId, hubspotField, databaseField])
+  @@index([syncConfigId])
+}
+
+enum TransformType {
+  DIRECT          // No transformation
+  DATE_FORMAT     // Date formatting
+  CASE_CHANGE     // Upper/Lower case
+  VALUE_MAP       // Map specific values
+  CUSTOM_FUNCTION // Custom JS function
+}
+
+// Sync Jobs & Logging
+model SyncJob {
+  id              String         @id @default(cuid())
+  syncConfigId    String
+  status          JobStatus
+  startedAt       DateTime       @default(now())
+  completedAt     DateTime?
+  recordsProcessed Int           @default(0)
+  recordsCreated  Int            @default(0)
+  recordsUpdated  Int            @default(0)
+  recordsFailed   Int            @default(0)
+  errorMessage    String?
+  metadata        Json?
+
+  syncConfig      SyncConfig     @relation(fields: [syncConfigId], references: [id])
+  syncLogs        SyncLog[]
+  conflicts       Conflict[]
+
+  @@index([syncConfigId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+enum JobStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+model SyncLog {
+  id            String       @id @default(cuid())
+  syncJobId     String
+  operation     Operation
+  entityType    EntityType
+  entityId      String       // HubSpot or DB record ID
+  status        LogStatus
+  message       String?
+  data          Json?        // Record data for debugging
+  createdAt     DateTime     @default(now())
+
+  syncJob       SyncJob      @relation(fields: [syncJobId], references: [id], onDelete: Cascade)
+
+  @@index([syncJobId])
+  @@index([entityId])
+  @@index([createdAt])
+}
+
+enum Operation {
+  CREATE
+  UPDATE
+  DELETE
+  SKIP
+}
+
+enum LogStatus {
+  SUCCESS
+  ERROR
+  WARNING
+}
+
+// Conflict Resolution
+model Conflict {
+  id              String          @id @default(cuid())
+  syncJobId       String
+  entityType      EntityType
+  entityId        String
+  fieldName       String
+  hubspotValue    Json?
+  databaseValue   Json?
+  resolution      ResolutionType?
+  resolvedBy      String?
+  resolvedAt      DateTime?
+  createdAt       DateTime        @default(now())
+
+  syncJob         SyncJob         @relation(fields: [syncJobId], references: [id])
+
+  @@index([syncJobId])
+  @@index([entityId])
+  @@index([resolution])
+}
+
+enum ResolutionType {
+  USE_HUBSPOT
+  USE_DATABASE
+  MANUAL
+  MERGE
+}
+
+// Webhook Configuration
+model WebhookConfig {
+  id              String      @id @default(cuid())
+  syncConfigId    String      @unique
+  webhookUrl      String      @unique
+  secret          String
+  events          String[]    // HubSpot event types
+  isActive        Boolean     @default(true)
+  lastReceivedAt  DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  syncConfig      SyncConfig  @relation(fields: [syncConfigId], references: [id], onDelete: Cascade)
+}
+
+// Synced Entities
+model Contact {
+  id              String      @id @default(cuid())
+  hubspotId       String?     @unique
+  email           String      @unique
+  firstName       String?
+  lastName        String?
+  phone           String?
+  company         String?
+  jobTitle        String?
+  properties      Json?       // Additional properties
+  lastSyncedAt    DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([email])
+  @@index([hubspotId])
+}
+
+model Company {
+  id              String      @id @default(cuid())
+  hubspotId       String?     @unique
+  name            String
+  domain          String?
+  industry        String?
+  phoneNumber     String?
+  city            String?
+  state           String?
+  country         String?
+  numberOfEmployees Int?
+  annualRevenue   Decimal?    @db.Decimal(15, 2)
+  properties      Json?
+  lastSyncedAt    DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([hubspotId])
+  @@index([domain])
+}
+
+model Deal {
+  id              String      @id @default(cuid())
+  hubspotId       String?     @unique
+  dealName        String
+  stage           String?
+  pipeline        String?
+  amount          Decimal?    @db.Decimal(15, 2)
+  closeDate       DateTime?
+  dealType        String?
+  priority        String?
+  properties      Json?
+  lastSyncedAt    DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([hubspotId])
+  @@index([stage])
+}
+
+// Queue Jobs
+model QueueJob {
+  id              String      @id @default(cuid())
+  queue           String
+  name            String
+  data            Json
+  status          String
+  attempts        Int         @default(0)
+  maxAttempts     Int         @default(3)
+  error           String?
+  processedAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([queue, status])
+  @@index([createdAt])
+}
