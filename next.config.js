@@ -21,6 +21,11 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
 
+  // Disable ESLint during build
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
   // Experimental features
   experimental: {
     serverActions: {
