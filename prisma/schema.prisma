@@ -15,13 +15,17 @@ datasource db {
 
 // Authentication & User Management
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
+  id            String       @id @default(cuid())
+  email         String       @unique
+  password      String? // Hashed password (bcrypt) - optional for OAuth users
   name          String?
-  role          UserRole  @default(USER)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  image         String? // Profile picture URL
+  emailVerified DateTime? // Email verification timestamp
+  role          UserRole     @default(USER)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
   accounts      Account[]
+  sessions      Session[]
   syncConfigs   SyncConfig[]
 }
 
@@ -31,40 +35,46 @@ enum UserRole {
 }
 
 model Account {
-  id                String   @id @default(cuid())
-  userId            String
-  hubspotAccountId  String?  @unique
-  accessToken       String?  @db.Text
-  refreshToken      String?  @db.Text
-  tokenExpiry       DateTime?
-  scopes            String[]
-  portalId          String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                 String    @id @default(cuid())
+  userId             String
+  hubspotAccountId   String?   @unique
+  accessToken        String?   @db.Text
+  refreshToken       String?   @db.Text
+  tokenExpiry        DateTime?
+  scopes             String[]
+  portalId           String?
+  // Google OAuth fields
+  googleAccountId    String?   @unique
+  googleAccessToken  String?   @db.Text
+  googleRefreshToken String?   @db.Text
+  googleTokenExpiry  DateTime?
+  googleEmail        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
 // Sync Configuration
 model SyncConfig {
-  id                String           @id @default(cuid())
-  name              String
-  description       String?
-  entityType        EntityType
-  syncDirection     SyncDirection
-  isActive          Boolean          @default(true)
-  syncInterval      Int?             // in minutes, null for real-time only
-  lastSyncAt        DateTime?
-  userId            String
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  id            String        @id @default(cuid())
+  name          String
+  description   String?
+  entityType    EntityType
+  syncDirection SyncDirection
+  isActive      Boolean       @default(true)
+  syncInterval  Int? // in minutes, null for real-time only
+  lastSyncAt    DateTime?
+  userId        String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  user              User             @relation(fields: [userId], references: [id])
-  fieldMappings     FieldMapping[]
-  syncJobs          SyncJob[]
-  webhookConfig     WebhookConfig?
+  user          User           @relation(fields: [userId], references: [id])
+  fieldMappings FieldMapping[]
+  syncJobs      SyncJob[]
+  webhookConfig WebhookConfig?
 
   @@index([userId])
   @@index([entityType])
@@ -77,57 +87,61 @@ enum EntityType {
   TICKET
   PRODUCT
   CUSTOM_OBJECT
+  GOOGLE_SHEET
 }
 
 enum SyncDirection {
   HUBSPOT_TO_DB
   DB_TO_HUBSPOT
   BIDIRECTIONAL
+  HUBSPOT_TO_SHEETS
+  SHEETS_TO_HUBSPOT
+  SHEETS_BIDIRECTIONAL
 }
 
 // Field Mapping
 model FieldMapping {
-  id              String      @id @default(cuid())
+  id              String         @id @default(cuid())
   syncConfigId    String
   hubspotField    String
   databaseField   String
   transformType   TransformType?
-  transformConfig Json?       // Custom transformation configuration
-  isRequired      Boolean     @default(false)
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  transformConfig Json? // Custom transformation configuration
+  isRequired      Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
-  syncConfig      SyncConfig  @relation(fields: [syncConfigId], references: [id], onDelete: Cascade)
+  syncConfig SyncConfig @relation(fields: [syncConfigId], references: [id], onDelete: Cascade)
 
   @@unique([syncConfigId, hubspotField, databaseField])
   @@index([syncConfigId])
 }
 
 enum TransformType {
-  DIRECT          // No transformation
-  DATE_FORMAT     // Date formatting
-  CASE_CHANGE     // Upper/Lower case
-  VALUE_MAP       // Map specific values
+  DIRECT // No transformation
+  DATE_FORMAT // Date formatting
+  CASE_CHANGE // Upper/Lower case
+  VALUE_MAP // Map specific values
   CUSTOM_FUNCTION // Custom JS function
 }
 
 // Sync Jobs & Logging
 model SyncJob {
-  id              String         @id @default(cuid())
-  syncConfigId    String
-  status          JobStatus
-  startedAt       DateTime       @default(now())
-  completedAt     DateTime?
-  recordsProcessed Int           @default(0)
-  recordsCreated  Int            @default(0)
-  recordsUpdated  Int            @default(0)
-  recordsFailed   Int            @default(0)
-  errorMessage    String?
-  metadata        Json?
+  id               String    @id @default(cuid())
+  syncConfigId     String
+  status           JobStatus
+  startedAt        DateTime  @default(now())
+  completedAt      DateTime?
+  recordsProcessed Int       @default(0)
+  recordsCreated   Int       @default(0)
+  recordsUpdated   Int       @default(0)
+  recordsFailed    Int       @default(0)
+  errorMessage     String?
+  metadata         Json?
 
-  syncConfig      SyncConfig     @relation(fields: [syncConfigId], references: [id])
-  syncLogs        SyncLog[]
-  conflicts       Conflict[]
+  syncConfig SyncConfig @relation(fields: [syncConfigId], references: [id])
+  syncLogs   SyncLog[]
+  conflicts  Conflict[]
 
   @@index([syncConfigId])
   @@index([status])
@@ -143,17 +157,17 @@ enum JobStatus {
 }
 
 model SyncLog {
-  id            String       @id @default(cuid())
-  syncJobId     String
-  operation     Operation
-  entityType    EntityType
-  entityId      String       // HubSpot or DB record ID
-  status        LogStatus
-  message       String?
-  data          Json?        // Record data for debugging
-  createdAt     DateTime     @default(now())
+  id         String     @id @default(cuid())
+  syncJobId  String
+  operation  Operation
+  entityType EntityType
+  entityId   String // HubSpot or DB record ID
+  status     LogStatus
+  message    String?
+  data       Json? // Record data for debugging
+  createdAt  DateTime   @default(now())
 
-  syncJob       SyncJob      @relation(fields: [syncJobId], references: [id], onDelete: Cascade)
+  syncJob SyncJob @relation(fields: [syncJobId], references: [id], onDelete: Cascade)
 
   @@index([syncJobId])
   @@index([entityId])
@@ -175,19 +189,19 @@ enum LogStatus {
 
 // Conflict Resolution
 model Conflict {
-  id              String          @id @default(cuid())
-  syncJobId       String
-  entityType      EntityType
-  entityId        String
-  fieldName       String
-  hubspotValue    Json?
-  databaseValue   Json?
-  resolution      ResolutionType?
-  resolvedBy      String?
-  resolvedAt      DateTime?
-  createdAt       DateTime        @default(now())
+  id            String          @id @default(cuid())
+  syncJobId     String
+  entityType    EntityType
+  entityId      String
+  fieldName     String
+  hubspotValue  Json?
+  databaseValue Json?
+  resolution    ResolutionType?
+  resolvedBy    String?
+  resolvedAt    DateTime?
+  createdAt     DateTime        @default(now())
 
-  syncJob         SyncJob         @relation(fields: [syncJobId], references: [id])
+  syncJob SyncJob @relation(fields: [syncJobId], references: [id])
 
   @@index([syncJobId])
   @@index([entityId])
@@ -203,73 +217,73 @@ enum ResolutionType {
 
 // Webhook Configuration
 model WebhookConfig {
-  id              String      @id @default(cuid())
-  syncConfigId    String      @unique
-  webhookUrl      String      @unique
-  secret          String
-  events          String[]    // HubSpot event types
-  isActive        Boolean     @default(true)
-  lastReceivedAt  DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id             String    @id @default(cuid())
+  syncConfigId   String    @unique
+  webhookUrl     String    @unique
+  secret         String
+  events         String[] // HubSpot event types
+  isActive       Boolean   @default(true)
+  lastReceivedAt DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  syncConfig      SyncConfig  @relation(fields: [syncConfigId], references: [id], onDelete: Cascade)
+  syncConfig SyncConfig @relation(fields: [syncConfigId], references: [id], onDelete: Cascade)
 }
 
 // Synced Entities
 model Contact {
-  id              String      @id @default(cuid())
-  hubspotId       String?     @unique
-  email           String      @unique
-  firstName       String?
-  lastName        String?
-  phone           String?
-  company         String?
-  jobTitle        String?
-  properties      Json?       // Additional properties
-  lastSyncedAt    DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id           String    @id @default(cuid())
+  hubspotId    String?   @unique
+  email        String    @unique
+  firstName    String?
+  lastName     String?
+  phone        String?
+  company      String?
+  jobTitle     String?
+  properties   Json? // Additional properties
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([email])
   @@index([hubspotId])
 }
 
 model Company {
-  id              String      @id @default(cuid())
-  hubspotId       String?     @unique
-  name            String
-  domain          String?
-  industry        String?
-  phoneNumber     String?
-  city            String?
-  state           String?
-  country         String?
+  id                String    @id @default(cuid())
+  hubspotId         String?   @unique
+  name              String
+  domain            String?
+  industry          String?
+  phoneNumber       String?
+  city              String?
+  state             String?
+  country           String?
   numberOfEmployees Int?
-  annualRevenue   Decimal?    @db.Decimal(15, 2)
-  properties      Json?
-  lastSyncedAt    DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  annualRevenue     Decimal?  @db.Decimal(15, 2)
+  properties        Json?
+  lastSyncedAt      DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@index([hubspotId])
   @@index([domain])
 }
 
 model Deal {
-  id              String      @id @default(cuid())
-  hubspotId       String?     @unique
-  dealName        String
-  stage           String?
-  pipeline        String?
-  amount          Decimal?    @db.Decimal(15, 2)
-  closeDate       DateTime?
-  dealType        String?
-  priority        String?
-  properties      Json?
-  lastSyncedAt    DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id           String    @id @default(cuid())
+  hubspotId    String?   @unique
+  dealName     String
+  stage        String?
+  pipeline     String?
+  amount       Decimal?  @db.Decimal(15, 2)
+  closeDate    DateTime?
+  dealType     String?
+  priority     String?
+  properties   Json?
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@index([hubspotId])
   @@index([stage])
@@ -277,18 +291,95 @@ model Deal {
 
 // Queue Jobs
 model QueueJob {
-  id              String      @id @default(cuid())
-  queue           String
-  name            String
-  data            Json
-  status          String
-  attempts        Int         @default(0)
-  maxAttempts     Int         @default(3)
-  error           String?
-  processedAt     DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
+  id          String    @id @default(cuid())
+  queue       String
+  name        String
+  data        Json
+  status      String
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  error       String?
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([queue, status])
   @@index([createdAt])
+}
+
+// Google Sheets Integration
+model GoogleSheet {
+  id              String    @id @default(cuid())
+  userId          String
+  spreadsheetId   String    @unique
+  spreadsheetName String
+  sheetName       String
+  sheetId         Int?
+  headerRow       Int       @default(1)
+  dataStartRow    Int       @default(2)
+  lastModified    DateTime?
+  syncConfigId    String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sheetMappings GoogleSheetMapping[]
+
+  @@index([userId])
+  @@index([spreadsheetId])
+}
+
+model GoogleSheetMapping {
+  id              String         @id @default(cuid())
+  sheetId         String
+  columnIndex     Int // A=0, B=1, etc.
+  columnName      String // Header name
+  hubspotProperty String? // Mapped HubSpot property
+  dataType        String         @default("TEXT") // TEXT, NUMBER, DATE, BOOLEAN
+  isKey           Boolean        @default(false) // Is this a key column for matching?
+  transformType   TransformType?
+  transformConfig Json?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  sheet GoogleSheet @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+
+  @@unique([sheetId, columnIndex])
+  @@index([sheetId])
+}
+
+// Track sync state between HubSpot and Google Sheets
+model SheetSyncState {
+  id              String   @id @default(cuid())
+  spreadsheetId   String
+  hubspotEntityId String
+  sheetRowNumber  Int
+  lastSyncedAt    DateTime
+  syncHash        String // Hash of the row data to detect changes
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([spreadsheetId, hubspotEntityId])
+  @@unique([spreadsheetId, sheetRowNumber])
+  @@index([spreadsheetId])
+  @@index([hubspotEntityId])
+}
+
+// NextAuth Session Management
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// Email Verification Tokens
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
