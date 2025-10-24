@@ -53,7 +53,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="flex min-h-screen">
       {/* Desktop Sidebar */}
-      <aside className="hidden w-64 border-r bg-background lg:block">
+      <aside className="hidden w-64 bg-background lg:block relative z-20 flex-shrink-0">
         <div className="flex h-full flex-col">
           <SidebarContent />
         </div>
@@ -69,9 +69,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       </Sheet>
 
       {/* Main content */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col bg-card relative z-10 shadow-lg ">
         {/* Top header */}
-        <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 lg:px-6">
+        <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-card/80 backdrop-blur-sm px-8 lg:px-10 rounded-tl-2xl">
           <div className="flex flex-1 items-center justify-between">
             <div className="flex items-center gap-4">
               {/* Mobile menu button */}
@@ -104,9 +104,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1 p-4 lg:p-6">
-          {children}
+        {/* Page content with slide-in animation */}
+        <main className="flex-1 p-6 lg:p-10 animate-slideInRight">
+          <div className="animate-fadeIn">
+            {children}
+          </div>
         </main>
       </div>
     </div>
