@@ -42,3 +42,8 @@ prisma/migrations/
 # redis
 dump.rdb
 /app/generated/prisma
+
+# HubSpot config file
+hubspot.config.yml
+
+.vercel
