@@ -4,48 +4,85 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Custom Warm Peach Background */
+    /* Background Colors - Warm peach #ffe6c9 */
+    --background: 30 100% 89%;                  /* Warm peach #ffe6c9 */
+    --foreground: 0 0% 6.3%;                    /* Cod Gray #101010 */
+
+    /* Card Colors - Peachy white to harmonize */
+    --card: 30 100% 96%;                        /* Peachy white #fff5eb */
+    --card-foreground: 0 0% 6.3%;               /* Cod Gray text */
+
+    /* Popover Colors */
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    --popover-foreground: 0 0% 6.3%;
+
+    /* Primary - Flamingo Orange #EE5A29 */
+    --primary: 15 82% 55%;                      /* Flamingo */
+    --primary-foreground: 0 0% 100%;            /* White text */
+
+    /* Secondary - Warm Neutral */
+    --secondary: 30 43% 96%;                    /* Warm 100 #FAF6F2 */
+    --secondary-foreground: 0 0% 6.3%;          /* Cod Gray */
+
+    /* Muted - Merino Warm */
+    --muted: 30 43% 93%;                        /* Merino #F5EDE6 */
+    --muted-foreground: 0 0% 38%;               /* Gray 600 */
+
+    /* Accent - Flamingo Light */
+    --accent: 15 100% 95%;                      /* Flamingo 50 */
+    --accent-foreground: 15 82% 55%;            /* Flamingo */
+
+    /* Destructive */
+    --destructive: 0 84% 60%;                   /* Error red */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Borders - Warm Light */
+    --border: 30 25% 89%;                       /* Warm 300 #EDE3D9 */
+    --input: 30 25% 89%;
+
+    /* Ring - Flamingo */
+    --ring: 15 82% 55%;
+
+    /* Border Radius - Coda-like subtle rounding */
     --radius: 0.5rem;
+
+    /* Additional Coda Variables */
+    --cod-gray: 0 0% 6.3%;                      /* #101010 */
+    --merino: 30 43% 93%;                       /* #F5EDE6 */
+    --flamingo: 15 82% 55%;                     /* #EE5A29 */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    /* Dark Mode - Coda Inspired */
+    --background: 0 0% 6.3%;                    /* Cod Gray #101010 */
+    --foreground: 0 0% 100%;                    /* White */
+
+    --card: 0 0% 10%;                           /* Slightly lighter than background */
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 100%;
+
+    /* Primary stays Flamingo */
+    --primary: 15 82% 55%;                      /* Flamingo */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 0% 14%;                      /* Dark warm */
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 14%;
+    --muted-foreground: 0 0% 74%;               /* Light gray text */
+
+    --accent: 15 82% 20%;                       /* Dark flamingo */
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 14%;
+    --input: 0 0% 14%;
+    --ring: 15 82% 55%;                         /* Flamingo ring */
   }
 }
 
@@ -54,7 +91,155 @@
     border-color: hsl(var(--border));
   }
   body {
-    background-color: hsl(var(--background));
+    background: linear-gradient(135deg, #ffe6c9 0%, #ffd4a3 50%, #ffe6c9 100%);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
     color: hsl(var(--foreground));
+    position: relative;
+    overflow-x: hidden;
   }
+
+  /* Dark mode background */
+  .dark body {
+    background: linear-gradient(135deg, hsl(0 0% 8%) 0%, hsl(0 0% 6.3%) 50%, hsl(0 0% 8%) 100%);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+  }
+
+  /* Animated gradient background */
+  @keyframes gradientShift {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
+
+  /* Floating shapes animation */
+  body::before,
+  body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    opacity: 0.1;
+    z-index: -1;
+    animation: float 20s ease-in-out infinite;
+  }
+
+  body::before {
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(238, 90, 41, 0.3) 0%, transparent 70%);
+    top: -100px;
+    left: -100px;
+    animation: float 25s ease-in-out infinite;
+  }
+
+  body::after {
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(255, 178, 89, 0.2) 0%, transparent 70%);
+    bottom: -200px;
+    right: -200px;
+    animation: float 30s ease-in-out infinite reverse;
+  }
+
+  /* Dark mode floating shapes */
+  .dark body::before {
+    background: radial-gradient(circle, rgba(238, 90, 41, 0.15) 0%, transparent 70%);
+  }
+
+  .dark body::after {
+    background: radial-gradient(circle, rgba(255, 178, 89, 0.1) 0%, transparent 70%);
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+    }
+    33% {
+      transform: translate(30px, -50px) scale(1.1);
+    }
+    66% {
+      transform: translate(-20px, 20px) scale(0.9);
+    }
+  }
+
+  /* Navigation animations */
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes iconBounce {
+    0%, 100% {
+      transform: scale(1) rotate(0deg);
+    }
+    25% {
+      transform: scale(1.2) rotate(-5deg);
+    }
+    50% {
+      transform: scale(1.15) rotate(5deg);
+    }
+    75% {
+      transform: scale(1.1) rotate(-3deg);
+    }
+  }
+
+  @keyframes slideInFromLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Apply animations */
+  .animate-slideInRight {
+    animation: slideInRight 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.6s ease-out 0.2s both;
+  }
+
+  .animate-iconBounce {
+    animation: iconBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .animate-slideInFromLeft {
+    animation: slideInFromLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  /* Staggered animation delays for navigation items */
+  nav a:nth-child(1) { animation-delay: 0ms; }
+  nav a:nth-child(2) { animation-delay: 50ms; }
+  nav a:nth-child(3) { animation-delay: 100ms; }
+  nav a:nth-child(4) { animation-delay: 150ms; }
+  nav a:nth-child(5) { animation-delay: 200ms; }
+  nav a:nth-child(6) { animation-delay: 250ms; }
+  nav a:nth-child(7) { animation-delay: 300ms; }
+  nav a:nth-child(8) { animation-delay: 350ms; }
 }

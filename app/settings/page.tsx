@@ -9,9 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Bell, Database, Shield, Zap, Save, Trash2, Key } from 'lucide-react';
+import { Bell, Database, Shield, Zap, Save, Trash2, Key, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { useConnections } from '@/hooks/useConnections';
+import { useToast } from '@/hooks/use-toast';
 
 export default function SettingsPage() {
+  const { toast } = useToast();
+  const { connections, loading, error, connectHubSpot, connectGoogle, refreshToken, disconnect } = useConnections();
+
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [syncFailures, setSyncFailures] = useState(true);
   const [conflictAlerts, setConflictAlerts] = useState(true);
@@ -19,6 +24,82 @@ export default function SettingsPage() {
   const [autoRetry, setAutoRetry] = useState(true);
   const [retryAttempts, setRetryAttempts] = useState('3');
   const [logRetention, setLogRetention] = useState('90');
+
+  const [refreshingHubspot, setRefreshingHubspot] = useState(false);
+  const [refreshingGoogle, setRefreshingGoogle] = useState(false);
+  const [disconnectingHubspot, setDisconnectingHubspot] = useState(false);
+  const [disconnectingGoogle, setDisconnectingGoogle] = useState(false);
+
+  const handleRefreshToken = async (provider: 'hubspot' | 'google') => {
+    if (provider === 'hubspot') {
+      setRefreshingHubspot(true);
+    } else {
+      setRefreshingGoogle(true);
+    }
+
+    const result = await refreshToken(provider);
+
+    if (provider === 'hubspot') {
+      setRefreshingHubspot(false);
+    } else {
+      setRefreshingGoogle(false);
+    }
+
+    if (result.success) {
+      toast({
+        title: 'Token Refreshed',
+        description: `${provider === 'hubspot' ? 'HubSpot' : 'Google Sheets'} token refreshed successfully.`,
+      });
+    } else {
+      toast({
+        title: 'Refresh Failed',
+        description: result.error || 'Failed to refresh token.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDisconnect = async (provider: 'hubspot' | 'google') => {
+    if (!confirm(`Are you sure you want to disconnect ${provider === 'hubspot' ? 'HubSpot' : 'Google Sheets'}?`)) {
+      return;
+    }
+
+    if (provider === 'hubspot') {
+      setDisconnectingHubspot(true);
+    } else {
+      setDisconnectingGoogle(true);
+    }
+
+    const result = await disconnect(provider);
+
+    if (provider === 'hubspot') {
+      setDisconnectingHubspot(false);
+    } else {
+      setDisconnectingGoogle(false);
+    }
+
+    if (result.success) {
+      toast({
+        title: 'Disconnected',
+        description: `${provider === 'hubspot' ? 'HubSpot' : 'Google Sheets'} disconnected successfully.`,
+      });
+    } else {
+      toast({
+        title: 'Disconnect Failed',
+        description: result.error || 'Failed to disconnect.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return 'Unknown';
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
 
   return (
     <DashboardLayout>
@@ -42,41 +123,127 @@ export default function SettingsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-medium">HubSpot</h3>
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                  Connected
-                </Badge>
+          {loading ? (
+            <div className="flex items-center justify-center p-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <>
+              {/* HubSpot Connection */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-medium">HubSpot</h3>
+                    {connections?.hubspot.connected ? (
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        Connected
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        Not Connected
+                      </Badge>
+                    )}
+                  </div>
+                  {connections?.hubspot.connected ? (
+                    <p className="text-sm text-muted-foreground">
+                      Portal ID: {connections.hubspot.portalId || 'N/A'} • Connected: {formatDate(connections.hubspot.connectedAt)}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Connect your HubSpot account to start syncing
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {connections?.hubspot.connected ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRefreshToken('hubspot')}
+                        disabled={refreshingHubspot}
+                      >
+                        {refreshingHubspot && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Refresh Token
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDisconnect('hubspot')}
+                        disabled={disconnectingHubspot}
+                      >
+                        {disconnectingHubspot && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Disconnect
+                      </Button>
+                    </>
+                  ) : (
+                    <Button onClick={connectHubSpot} size="sm">
+                      Connect HubSpot
+                    </Button>
+                  )}
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Portal ID: 12345678 • Connected: Oct 15, 2025
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">Refresh Token</Button>
-              <Button variant="outline" size="sm">Disconnect</Button>
-            </div>
-          </div>
 
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-medium">Google Sheets</h3>
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                  Connected
-                </Badge>
+              {/* Google Sheets Connection */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-medium">Google Sheets</h3>
+                    {connections?.google.connected ? (
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                        Connected
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+                        <XCircle className="h-3 w-3 mr-1" />
+                        Not Connected
+                      </Badge>
+                    )}
+                  </div>
+                  {connections?.google.connected ? (
+                    <p className="text-sm text-muted-foreground">
+                      Account: {connections.google.email || 'N/A'} • Connected: {formatDate(connections.google.connectedAt)}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Connect your Google account to sync with Sheets
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {connections?.google.connected ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRefreshToken('google')}
+                        disabled={refreshingGoogle}
+                      >
+                        {refreshingGoogle && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Refresh Token
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDisconnect('google')}
+                        disabled={disconnectingGoogle}
+                      >
+                        {disconnectingGoogle && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                        Disconnect
+                      </Button>
+                    </>
+                  ) : (
+                    <Button onClick={connectGoogle} size="sm">
+                      Connect Google
+                    </Button>
+                  )}
+                </div>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Account: user@company.com • Connected: Oct 18, 2025
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">Refresh Token</Button>
-              <Button variant="outline" size="sm">Disconnect</Button>
-            </div>
-          </div>
+            </>
+          )}
         </CardContent>
       </Card>
 

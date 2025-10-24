@@ -17,6 +17,30 @@ const config: Config = {
     },
     extend: {
       colors: {
+        // Coda.io Brand Colors
+        'cod-gray': '#101010',
+        'merino': '#F5EDE6',
+        'flamingo': {
+          50: '#FFF4F0',
+          100: '#FFE8DD',
+          200: '#FFCCB3',
+          300: '#FFB089',
+          400: '#FF8553',
+          500: '#EE5A29', // Main Flamingo
+          600: '#D94B1A',
+          700: '#B33D15',
+          800: '#8C2F10',
+          900: '#66210B',
+        },
+        // Warm Neutrals (Merino-based)
+        'warm': {
+          50: '#FDFBF9',
+          100: '#FAF6F2',
+          200: '#F5EDE6', // Merino
+          300: '#EDE3D9',
+          400: '#D9C9B9',
+        },
+        // Shadcn/ui compatible colors with Coda theme
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
